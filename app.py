@@ -90,6 +90,11 @@ def auto_scan_on_startup():
         db.session.commit()
         print(f"✅ Escaneo completado: {new_count} canciones nuevas añadidas.")
 
+# ── INICIALIZACIÓN DE APP (Vital para Render/Gunicorn) ──────────
+with app.app_context():
+    db.create_all()
+    auto_scan_on_startup()
+
 # ── ROUTES ────────────────────────────────────────────────────
 @app.route("/")
 def index():
@@ -100,7 +105,7 @@ def stream_song(song_id):
     song = Song.query.get_or_404(song_id)
     return send_from_directory(app.config["UPLOAD_FOLDER"], song.filename)
 
-# ── SONGS API ─────────────────────────────────────────────────
+# ── API ROUTES ────────────────────────────────────────────────
 @app.route("/api/songs", methods=["GET"])
 def get_songs():
     songs = Song.query.order_by(Song.added_at.desc()).all()
@@ -116,15 +121,12 @@ def upload_songs():
     
     for file in files:
         if file.filename == "" or not allowed_file(file.filename): continue
-
         ext = file.filename.rsplit(".", 1)[1].lower()
         unique_name = f"{uuid.uuid4().hex}.{ext}"
         save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
         file.save(save_path)
-
         tags = read_id3_tags(save_path)
         raw_name = os.path.splitext(file.filename)[0].replace("-", " ").replace("_", " ").strip()
-
         song = Song(
             title=tags["title"] or raw_name,
             artist=tags["artist"] or "Artista desconocido",
@@ -135,58 +137,9 @@ def upload_songs():
         db.session.add(song)
         db.session.flush()
         uploaded.append(song_to_dict(song))
-
     db.session.commit()
     return jsonify({"uploaded": uploaded}), 201
 
-@app.route("/api/songs/<int:song_id>", methods=["PATCH"])
-def update_song(song_id):
-    song = Song.query.get_or_404(song_id)
-    data = request.get_json(silent=True) or {}
-    for field in ["liked", "lyrics", "title", "artist", "album"]:
-        if field in data:
-            setattr(song, field, data[field])
-    db.session.commit()
-    return jsonify(song_to_dict(song))
-
-@app.route("/api/songs/<int:song_id>", methods=["DELETE"])
-def delete_song(song_id):
-    song = Song.query.get_or_404(song_id)
-    try:
-        os.remove(os.path.join(app.config["UPLOAD_FOLDER"], song.filename))
-    except FileNotFoundError: pass
-    db.session.delete(song)
-    db.session.commit()
-    return jsonify({"deleted": song_id})
-
-# ── PLAYLISTS API ─────────────────────────────────────────────
-@app.route("/api/playlists", methods=["GET"])
-def get_playlists():
-    pls = Playlist.query.order_by(Playlist.created_at).all()
-    return jsonify([pl_to_dict(p) for p in pls])
-
-@app.route("/api/playlists", methods=["POST"])
-def create_playlist():
-    data = request.get_json(silent=True) or {}
-    name = (data.get("name") or "").strip()
-    if not name: return jsonify({"error": "Nombre requerido"}), 400
-    pl = Playlist(name=name)
-    db.session.add(pl)
-    db.session.commit()
-    return jsonify(pl_to_dict(pl)), 201
-
-@app.route("/api/playlists/<int:pl_id>/songs", methods=["POST"])
-def add_to_pl(pl_id):
-    data = request.get_json(silent=True) or {}
-    song_id = data.get("song_id")
-    if not PlaylistSong.query.filter_by(playlist_id=pl_id, song_id=song_id).first():
-        db.session.add(PlaylistSong(playlist_id=pl_id, song_id=song_id))
-        db.session.commit()
-    return jsonify(pl_to_dict(Playlist.query.get(pl_id)))
-
 # ── RUN ───────────────────────────────────────────────────────
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-        auto_scan_on_startup() # <--- El escaneo ocurre aquí
     app.run(debug=True, host="0.0.0.0", port=5000)
