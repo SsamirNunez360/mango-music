@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mango Music</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥭</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════════ -->
+<aside id="sidebar">
+  <div class="logo-wrap">
+    <div class="logo-icon">🥭</div>
+    <div>
+      <div class="logo-text"><span>Mango</span> Music</div>
+      <div class="logo-tagline">No es Apple. Es mejor. (Casi.)</div>
+    </div>
+  </div>
+
+  <div class="section-label">Biblioteca</div>
+  <button class="nav-item active" id="nav-all" onclick="showView('all')">
+    <div class="nav-icon">🎵</div> Todas las canciones
+  </button>
+  <button class="nav-item" id="nav-liked" onclick="showView('liked')">
+    <div class="nav-icon">❤️</div> Favoritas
+  </button>
+  <button class="nav-item" id="nav-recent" onclick="showView('recent')">
+    <div class="nav-icon">🕐</div> Agregadas recientemente
+  </button>
+
+  <div class="section-label">Playlists</div>
+  <div id="pl-list"></div>
+  <button class="new-pl-btn" onclick="openNewPl()">
+    <span style="font-size:16px">＋</span> Nueva playlist
+  </button>
+</aside>
+
+<!-- ══ MAIN ═════════════════════════════════════════════════ -->
+<main id="main">
+  <div id="topbar">
+    <div id="view-title">Todas las canciones</div>
+    <div class="search-wrap">
+      <span class="s-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Buscar en Mango…" oninput="onSearch(this.value)">
+    </div>
+    <button class="upload-btn" onclick="document.getElementById('file-in').click()">
+      ⬆ Agregar música
+    </button>
+    <input type="file" id="file-in" accept=".mp3,.wav,.ogg,.flac,.m4a" multiple
+           style="display:none" onchange="handleFiles(this.files)">
+  </div>
+
+  <div id="song-list-wrap">
+    <div class="list-header">
+      <span>#</span>
+      <span>Título</span>
+      <span>Álbum</span>
+      <span>Duración</span>
+      <span></span>
+    </div>
+    <div id="song-list">
+      <div class="empty-state">
+        <div class="empty-icon">🥭</div>
+        <h3>¡Bienvenido a Mango Music!</h3>
+        <p>Sube tus archivos MP3 usando el botón de arriba</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ══ RIGHT PANEL ════════════════════════════════════════════ -->
+<aside id="right-panel">
+  <div class="panel-section-label">Sonando ahora</div>
+
+  <div class="now-playing-card">
+    <div class="album-art">
+      <div class="mango-emoji">🥭</div>
+    </div>
+    <div class="np-meta">
+      <div class="np-title" id="np-title"><span class="np-idle">Selecciona una canción</span></div>
+      <div class="np-artist" id="np-artist" style="color:var(--text-dim)">Mango Music · Tu biblioteca</div>
+    </div>
+  </div>
+
+  <div class="panel-section-label">Letra</div>
+  <div class="lyrics-box">
+    <textarea class="lyrics-ta" id="lyrics-ta"
+              placeholder="🎤 Pega o escribe la letra aquí…"
+              oninput="lyricsChanged=true"></textarea>
+    <button class="save-btn" id="save-btn" onclick="saveLyrics()">
+      💾 Guardar letra
+    </button>
+  </div>
+</aside>
+
+<!-- ══ PLAYER BAR ═════════════════════════════════════════════ -->
+<div id="player-bar">
+  <!-- Left -->
+  <div class="pb-left">
+    <div class="pb-cover" id="pb-cover">🎵</div>
+    <div class="pb-meta">
+      <div class="pb-title"  id="pb-title">—</div>
+      <div class="pb-artist" id="pb-artist">Selecciona algo</div>
+    </div>
+    <button class="pb-like" id="pb-like" onclick="likeCurrentSong()">♡</button>
+  </div>
+
+  <!-- Center -->
+  <div class="pb-center">
+    <div class="controls-row">
+      <button class="ctrl" id="btn-shuffle" title="Aleatoria"  onclick="toggleShuffle()">⇄</button>
+      <button class="ctrl" title="Anterior"                    onclick="prevSong()">⏮</button>
+      <button class="play-btn" id="play-btn"                   onclick="togglePlay()">▶</button>
+      <button class="ctrl" title="Siguiente"                   onclick="nextSong()">⏭</button>
+      <button class="ctrl" id="btn-repeat" title="Repetir"     onclick="cycleRepeat()">↩</button>
+    </div>
+    <div class="progress-row">
+      <span class="t-label" id="t-cur">0:00</span>
+      <div class="prog-track" id="prog-track" onclick="seekTo(event)">
+        <div class="prog-fill"  id="prog-fill"></div>
+        <div class="prog-thumb" id="prog-thumb"></div>
+      </div>
+      <span class="t-label" id="t-tot">0:00</span>
+    </div>
+  </div>
+
+  <!-- Right -->
+  <div class="pb-right">
+    <button class="vol-btn" id="vol-btn" onclick="toggleMute()">🔊</button>
+    <input type="range" class="vol-slider" id="vol-slider"
+           min="0" max="100" value="80" oninput="setVol(this.value)">
+  </div>
+</div>
+
+<!-- ══ MODALS ════════════════════════════════════════════════ -->
+<!-- Nueva playlist -->
+<div class="backdrop" id="modal-pl">
+  <div class="modal">
+    <h2>🥭 Nueva playlist</h2>
+    <input type="text" class="m-input" id="pl-name-in"
+           placeholder="Nombre de la playlist"
+           onkeydown="if(event.key==='Enter') createPl()">
+    <div class="m-actions">
+      <button class="btn-g" onclick="closeMod('modal-pl')">Cancelar</button>
+      <button class="btn-p" onclick="createPl()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agregar a playlist -->
+<div class="backdrop" id="modal-addto">
+  <div class="modal">
+    <h2>Agregar a playlist</h2>
+    <div id="addto-list"
+         style="max-height:220px;overflow-y:auto;margin-bottom:14px;display:flex;flex-direction:column;gap:4px;">
+    </div>
+    <div class="m-actions">
+      <button class="btn-g" onclick="closeMod('modal-addto')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONTEXT MENU ═══════════════════════════════════════════ -->
+<div class="ctx-menu" id="ctx-menu">
+  <button class="ctx-item" id="ctx-play" onclick="ctxDo('play')">▶ Reproducir</button>
+  <button class="ctx-item" id="ctx-like" onclick="ctxDo('like')">♡ Favorita</button>
+  <button class="ctx-item"               onclick="ctxDo('addto')">＋ Agregar a playlist</button>
+  <button class="ctx-item"               onclick="ctxDo('lyrics')">🎤 Ver letra</button>
+  <div class="ctx-sep"></div>
+  <button class="ctx-item danger"        onclick="ctxDo('del')">🗑 Eliminar</button>
+</div>
+
+<!-- ══ TOAST CONTAINER ════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<audio id="aud" preload="metadata"></audio>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
