@@ -1,39 +1,21 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
 .Python
-*.egg
-*.egg-info/
-dist/
-build/
-.eggs/
-
-# Virtual environments
 venv/
 env/
-.env/
+.env
 .venv/
 
-# Flask / app specific
+# Bases de datos (Local)
+# La ignoramos para que Render cree una limpia en la nube
 mango.db
+
+# Flask / App
 instance/
-*.sqlite3
+.pytest_cache/
 
-# Uploaded music files (don't commit MP3s to git)
-static/uploads/
-
-# OS
+# Sistema
 .DS_Store
 Thumbs.db
-
-# Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Env vars
-.env
-.env.local
