@@ -1,3 +1,7 @@
+//  these lines were corrected:
+// 1. playSong: uses s.filename with /static/ prefix
+// 2. updateNP: ensures proper data mapping
+
 // ═══════════════════════════════════════════════════════
 //  Mango Music — Frontend App
 //  Comunicación completa con el backend Flask via REST API
@@ -210,11 +214,15 @@ function renderPls() {
 }
 
 // ─── PLAYER ──────────────────────────────────────────────────
+// CORRECCIÓN AQUÍ: Se cambió s.url por s.filename y se agregó /static/
 function playSong(id) {
   const s = songs.find(s => s.id == id);
   if (!s) return;
   curId = s.id;
-  aud.src = s.url;
+  
+  // Construimos la ruta correcta: /static/ + music/aire.mp3
+  aud.src = "/static/" + s.filename; 
+  
   aud.play();
   playing = true;
   updatePB(s);
